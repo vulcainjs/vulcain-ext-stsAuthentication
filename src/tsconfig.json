@@ -1,0 +1,19 @@
+{
+    "compileOnSave": true,
+    "compilerOptions": {
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "declaration": true,
+        "module": "commonjs",
+        "target": "es6",
+        "watch": false,
+        "noUnusedParameters": false,
+        "noUnusedLocals": false,
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "outDir": "../dist"
+    },
+    "exclude": [
+        "node_modules"
+    ]
+}
