@@ -1,4 +1,5 @@
-import { ITokenService, UserContext, VerifyTokenParameter, ConfigurationProperty, Conventions, IDynamicProperty, System, UserToken, Injectable, LifeTime, DefaultServiceNames } from "vulcain-corejs";
+import { ITokenService, UserContext, VerifyTokenParameter, ConfigurationProperty, IDynamicProperty, System, UserToken, Injectable, LifeTime, DefaultServiceNames } from "vulcain-corejs";
+import { Constants } from "./constants";
 
 const jwt = require('jsonwebtoken');
 const jwks = require('jwks-rsa');
@@ -8,7 +9,7 @@ const unirest = require('unirest');
 @Injectable(LifeTime.Singleton, DefaultServiceNames.TokenService)
 export class StsTokenService implements ITokenService
 {
-    @ConfigurationProperty(Conventions.instance.TOKEN_STS_AUTHORITY, "string")
+    @ConfigurationProperty(Constants.TOKEN_STS_AUTHORITY, "string")
     private authority: IDynamicProperty<string>;
     private readonly openidConfig: string = '/.well-known/openid-configuration';
     private jwksConfig = {
@@ -22,7 +23,7 @@ export class StsTokenService implements ITokenService
     private jwksClient: { getSigningKey(kid: string, callback: (err: Error, key: { publicKey: string, rsaPublicKey: string }) => void) };
 
     constructor() {
-        this.authority = System.createChainedConfigurationProperty<string>(Conventions.instance.TOKEN_STS_AUTHORITY, 'http://localhost:5100');
+        this.authority = System.createChainedConfigurationProperty<string>(Constants.TOKEN_STS_AUTHORITY, 'http://localhost:5100');
         System.log.info(null, () => `using ${this.authority.value} as STS authority`);
         this.initializeRsaSigninKey();
     }

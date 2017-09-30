@@ -1,17 +1,18 @@
-import { SecurityManager, ITokenService, ConfigurationProperty, Conventions, IDynamicProperty, Inject, DefaultServiceNames, System, IRequestContext, Injectable, LifeTime } from "vulcain-corejs";
+import { SecurityManager, ITokenService, ConfigurationProperty, IDynamicProperty, Inject, DefaultServiceNames, System, IRequestContext, Injectable, LifeTime } from "vulcain-corejs";
 import { IAuthorizationPolicy } from "vulcain-corejs/dist/security/authorizationPolicy";
+import { Constants } from "./constants";
 const unirest = require('unirest');
 
 @Injectable(LifeTime.Singleton, DefaultServiceNames.SecurityManager )
 export class StsAuthentication extends SecurityManager {
 
-    @ConfigurationProperty(Conventions.instance.TOKEN_STS_AUTHORITY, "string")
+    @ConfigurationProperty(Constants.TOKEN_STS_AUTHORITY, "string")
     private authority: IDynamicProperty<string>;
     private userInfoEndpoint: string;
 
     constructor( @Inject(DefaultServiceNames.AuthorizationPolicy) scopePolicy: IAuthorizationPolicy) {
         super(scopePolicy);
-        this.authority = System.createChainedConfigurationProperty<string>(Conventions.instance.TOKEN_STS_AUTHORITY, 'http://localhost:5100');
+        this.authority = System.createChainedConfigurationProperty<string>(Constants.TOKEN_STS_AUTHORITY, 'http://localhost:5100');
         System.log.info(null, () => `using ${this.authority.value} as STS authority`);
 
         this.addOrReplaceStrategy('bearer', this.verify.bind(this));
