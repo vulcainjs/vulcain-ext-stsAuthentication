@@ -1,21 +1,61 @@
-import { SecurityManager, ITokenService, ConfigurationProperty, IDynamicProperty, Inject, DefaultServiceNames, System, IRequestContext, Injectable, LifeTime } from "vulcain-corejs";
-import { IAuthorizationPolicy } from "vulcain-corejs/dist/security/authorizationPolicy";
+import { IAuthenticationStrategy, IAuthorizationPolicy, ConfigurationProperty, IDynamicProperty, Inject, DefaultServiceNames, System, IRequestContext, Injectable, LifeTime, DynamicConfiguration, UserToken } from "vulcain-corejs";
 import { Constants } from "./constants";
 const unirest = require('unirest');
+const jwt = require('jsonwebtoken');
+const jwks = require('jwks-rsa');
+const ms = require('ms');
 
-@Injectable(LifeTime.Singleton, DefaultServiceNames.SecurityManager )
-export class StsAuthentication extends SecurityManager {
+@Injectable(LifeTime.Singleton, DefaultServiceNames.AuthenticationStrategy )
+export class StsAuthentication implements IAuthenticationStrategy {
+
+    public readonly name = "bearer";
 
     @ConfigurationProperty(Constants.TOKEN_STS_AUTHORITY, "string")
     private authority: IDynamicProperty<string>;
     private userInfoEndpoint: string;
+    private readonly openidConfig: string = '/.well-known/openid-configuration';
+    private jwksConfig = {
+        cache: true,
+        cacheMaxEntries: 5,
+        cacheMaxAge: ms('8h'),
+        strictssl: false, // TODO: test env to enforce ssl in production
+        jwksUri: undefined
+    };
+    private signingKey: string;
+    private jwksClient: { getSigningKey(kid: string, callback: (err: Error, key: { publicKey: string, rsaPublicKey: string }) => void) };
 
-    constructor( @Inject(DefaultServiceNames.AuthorizationPolicy) scopePolicy: IAuthorizationPolicy) {
-        super(scopePolicy);
-        this.authority = System.createChainedConfigurationProperty<string>(Constants.TOKEN_STS_AUTHORITY, 'http://localhost:5100');
+    constructor() {
+        this.authority = DynamicConfiguration.getChainedConfigurationProperty<string>(Constants.TOKEN_STS_AUTHORITY, 'http://localhost:5100');
         System.log.info(null, () => `using ${this.authority.value} as STS authority`);
+        this.initializeRsaSigninKey();
+    }
 
-        this.addOrReplaceStrategy('bearer', this.verify.bind(this));
+    private ensureInitialized(): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            if (this.jwksClient) {
+                resolve(true);
+            } else {
+                this.initializeRsaSigninKey().then(_ => resolve(true), rej => reject(rej));
+            }
+        });
+    }
+
+    private initializeRsaSigninKey(): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const openIdConfigUrl = `${this.authority.value}/.well-known/openid-configuration`;
+            // TODO command
+            const oidcConfig = unirest.get(openIdConfigUrl).as.json((res) => {
+                if (res.error) {
+                    reject(res.error);
+                } else if (res.status >= 400) {
+                    reject(res);
+                } else {
+                    this.jwksConfig.jwksUri = res.body.jwks_uri;
+                    this.jwksClient = jwks(this.jwksConfig);
+                    resolve(this.jwksConfig.jwksUri);
+                }
+            });
+        });
     }
 
     private ensureUserInfoEndpointLoaded() {
@@ -56,31 +96,44 @@ export class StsAuthentication extends SecurityManager {
         });
     }
 
-    private async verify(ctx: IRequestContext, accessToken: string) {
-        try {
-            let tokens = ctx.container.get<ITokenService>(DefaultServiceNames.TokenService);
-            let token: any = await tokens.verifyTokenAsync({ token: accessToken, tenant: ctx.user.tenant });
-
-            // No token found
-            if (!token) {
-                System.log.info(ctx, () => "Bearer authentication: Invalid jwtToken : " + accessToken);
-                return null;
+    verifyTokenAsync(ctx: IRequestContext, accessToken: string, tenant: string): Promise<UserToken> {
+        return new Promise((resolve, reject) => {
+            if (!accessToken) {
+                reject("You must provide a valid token");
+                return;
             }
+            let options: any = {
+                "issuer": [this.authority.value],
+                // "audience": "patient-highlights" //TODO: get service name as defined in STS resource manager
+            };
 
-            // get user info from STS
-            let user = await this.getUserInfoAsync(accessToken);
-            user.scopes = [
-                ...token.scope,
-                ...token.role
-            ];
+            const decodedToken = jwt.decode(accessToken, { complete: true });
 
-            System.log.info(ctx, () => JSON.stringify(user));
+            this.ensureInitialized().then(() => {
+                this.jwksClient.getSigningKey(decodedToken.header.kid, (err, key) => {
+                    if (err) {
+                        reject({ error: err, message: `Unable to resolve RSA public key from kid: ${decodedToken.header.kid}` });
+                        return;
+                    }
+                    const signingKey = key.publicKey || key.rsaPublicKey;
 
-            return user; // Return the current user with its scopes and tenant
-        }
-        catch (err) {
-            System.log.error(ctx, err, () => "Bearer authentication: Error with jwtToken " + accessToken);
-            return null;
-        }
+                    jwt.verify(accessToken, signingKey, options, async (err, decodedToken) => {
+                        if (err) {
+                            reject({ error: err, message: "Invalid JWT token" });
+                        } else {
+                            // get user info from STS
+                            let user = await this.getUserInfoAsync(accessToken);
+                            user.scopes = [
+                                ...decodedToken.scope,
+                                ...decodedToken.role
+                            ];
+                            resolve(user);
+                        }
+                    });
+                });
+            })
+                .catch(reject);
+
+        });
     }
 }
