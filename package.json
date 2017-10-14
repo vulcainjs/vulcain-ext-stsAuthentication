@@ -20,7 +20,7 @@
     "jsonwebtoken": "^8.0.1",
     "jwks-rsa": "^1.2.0",
     "unirest": "^0.5.1",
-    "vulcain-corejs": "^2.0.0-beta4"
+    "vulcain-corejs": ">2.0.0-"
   },
   "devDependencies": {
     "typescript": "^2.5.3"
