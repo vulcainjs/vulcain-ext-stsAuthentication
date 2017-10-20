@@ -1,4 +1,4 @@
-import { IAuthenticationStrategy, IAuthorizationPolicy, ConfigurationProperty, IDynamicProperty, Inject, DefaultServiceNames, System, IRequestContext, Injectable, LifeTime, DynamicConfiguration, UserToken } from "vulcain-corejs";
+import { IAuthenticationStrategy, IAuthorizationPolicy, ConfigurationProperty, IDynamicProperty, Inject, DefaultServiceNames, System, IRequestContext, Injectable, LifeTime, DynamicConfiguration, UserContextData } from "vulcain-corejs";
 import { Constants } from "./constants";
 const unirest = require('unirest');
 const jwt = require('jsonwebtoken');
@@ -78,7 +78,7 @@ export class StsAuthentication implements IAuthenticationStrategy {
         });
     }
 
-    private async getUserInfoAsync(accessToken: string) {
+    private async getUserInfo(accessToken: string) {
         await this.ensureUserInfoEndpointLoaded()
             .catch(err => {
                 System.log.error(null, err, () => 'Error getting STS user info endpoint');
@@ -96,7 +96,7 @@ export class StsAuthentication implements IAuthenticationStrategy {
         });
     }
 
-    verifyTokenAsync(ctx: IRequestContext, accessToken: string, tenant: string): Promise<UserToken> {
+    verifyToken(ctx: IRequestContext, accessToken: string, tenant: string): Promise<UserContextData> {
         return new Promise((resolve, reject) => {
             if (!accessToken) {
                 reject("You must provide a valid token");
@@ -122,7 +122,7 @@ export class StsAuthentication implements IAuthenticationStrategy {
                             reject({ error: err, message: "Invalid JWT token" });
                         } else {
                             // get user info from STS
-                            let user = await this.getUserInfoAsync(accessToken);
+                            let user = await this.getUserInfo(accessToken);
                             user.scopes = [
                                 ...decodedToken.scope,
                                 ...decodedToken.role

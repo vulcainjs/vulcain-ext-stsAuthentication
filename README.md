@@ -37,5 +37,5 @@ class MyAdapter extends ExpressAdapter {
 
 // MyAdapter will be use automatically
 let app = new ApplicationBuilder('Domain')
-    .runAsync();
+    .run();
 ```
