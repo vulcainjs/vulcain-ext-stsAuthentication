@@ -1,4 +1,7 @@
-import { IAuthenticationStrategy, IAuthorizationPolicy, ConfigurationProperty, IDynamicProperty, Inject, DefaultServiceNames, System, IRequestContext, Injectable, LifeTime, DynamicConfiguration, UserToken } from "vulcain-corejs";
+import {
+    IAuthenticationStrategy, IAuthorizationPolicy, ConfigurationProperty, IDynamicProperty,
+    Inject, DefaultServiceNames, Service, IRequestContext, Injectable, LifeTime, DynamicConfiguration, UserToken
+} from "vulcain-corejs";
 import { Constants } from "./constants";
 const unirest = require('unirest');
 const jwt = require('jsonwebtoken');
@@ -26,7 +29,7 @@ export class StsAuthentication implements IAuthenticationStrategy {
 
     constructor() {
         this.authority = DynamicConfiguration.getChainedConfigurationProperty<string>(Constants.TOKEN_STS_AUTHORITY, 'http://localhost:5100');
-        System.log.info(null, () => `using ${this.authority.value} as STS authority`);
+        Service.log.info(null, () => `using ${this.authority.value} as STS authority`);
         this.initializeRsaSigninKey();
     }
 
@@ -81,7 +84,7 @@ export class StsAuthentication implements IAuthenticationStrategy {
     private async getUserInfoAsync(accessToken: string) {
         await this.ensureUserInfoEndpointLoaded()
             .catch(err => {
-                System.log.error(null, err, () => 'Error getting STS user info endpoint');
+                Service.log.error(null, err, () => 'Error getting STS user info endpoint');
             });
 
         return new Promise<any>((resolve, reject) => {
@@ -96,7 +99,7 @@ export class StsAuthentication implements IAuthenticationStrategy {
         });
     }
 
-    verifyTokenAsync(ctx: IRequestContext, accessToken: string, tenant: string): Promise<UserToken> {
+    verifyToken(ctx: IRequestContext, accessToken: string, tenant: string): Promise<UserToken> {
         return new Promise((resolve, reject) => {
             if (!accessToken) {
                 reject("You must provide a valid token");
