@@ -1,9 +1,9 @@
 import {
     IAuthenticationStrategy, IAuthorizationPolicy, ConfigurationProperty, IDynamicProperty,
-    Inject, DefaultServiceNames, Service, IRequestContext, Injectable, LifeTime, DynamicConfiguration, UserToken
+    Inject, DefaultServiceNames, Service, IRequestContext, Injectable, LifeTime, DynamicConfiguration, UserToken, UserContextData
 } from "vulcain-corejs";
 import { Constants } from "./constants";
-import { UserContextData } from "vulcain-corejs/dist/security/securityContext";
+
 const unirest = require('unirest');
 const jwt = require('jsonwebtoken');
 const jwks = require('jwks-rsa');

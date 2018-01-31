@@ -22,20 +22,21 @@ exemple
 vulcainStsAuthority="http://localhost:5001"
 ```
 
-### Create a new adapter extending ExpressAdapter which will replace the default adapter
+## Sts adapter for vulcainjs
+
+Works with Microsoft Identity Server.
+
+
+### How to use it
+
+Install it from npm
+
+```sh
+npm i vulcain-ext-stsauthentication
+```
+
+And import it in your index.js vulcain project file.
 
 ```js
-import { ExpressAdapter } from 'vulcain-ext-express';
-
-// Declare your new adapter before running application
-@Injectable(LifeTime.Singleton, DefaultServiceNames.ServerAdapter )
-class MyAdapter extends ExpressAdapter {
-    initializeRoutes(express) {
-        // Add express initialization here
-    }
-}
-
-// MyAdapter will be use automatically
-let app = new ApplicationBuilder('Domain')
-    .run();
+import { StsAuthentication } from 'vulcain-ext-stsauthentication';
 ```
